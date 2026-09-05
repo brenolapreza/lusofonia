@@ -1,0 +1,15 @@
+[
+  {
+    "id": "own-film-torbox",
+    "videoId": "nuvio:own:film",
+    "authorization": "Substitua pela autorização referente ao seu arquivo",
+    "torbox": {
+      "hash": "0000000000000000000000000000000000000000",
+      "torrentId": 0,
+      "fileId": 0
+    },
+    "audio": [],
+    "subtitles": [],
+    "verified": false
+  }
+]

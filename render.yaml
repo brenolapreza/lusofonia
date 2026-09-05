@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: nuvio-lusofonia
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: BASE_URL="$RENDER_EXTERNAL_URL" npm start
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "22.23.2"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: PORT
+        value: "3000"
+      - key: DATABASE_URL
+        value: "file:./data/nuvio.sqlite"
+      - key: TORBOX_ENABLED
+        value: "false"
+      - key: TORBOX_ONLY_CACHED
+        value: "true"
+      - key: LOG_LEVEL
+        value: "info"

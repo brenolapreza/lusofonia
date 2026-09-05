@@ -1,0 +1,11 @@
+[
+  {
+    "id": "own-film-direct",
+    "videoId": "nuvio:own:film",
+    "authorization": "Substitua pela origem e pelo fundamento da autorização desta fonte",
+    "url": "https://media.example.org/my-authorized-film.mp4",
+    "audio": [],
+    "subtitles": [],
+    "verified": false
+  }
+]

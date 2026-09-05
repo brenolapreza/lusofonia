@@ -1,0 +1,14 @@
+[
+  {
+    "id": "nuvio:own:film",
+    "type": "movie",
+    "name": "Meu filme autorizado",
+    "aliases": ["My authorized movie"],
+    "externalIds": [],
+    "year": 2026,
+    "country": "BR",
+    "categories": ["movies"],
+    "description": "Substitua pelos metadados de uma obra que você está autorizado a usar.",
+    "videos": []
+  }
+]
