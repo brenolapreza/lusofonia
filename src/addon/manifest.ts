@@ -10,7 +10,7 @@ export const catalogs = [
 export function manifest(variant: Variant) {
   return {
     id: `org.nuvio.lusofonia.${variant}`,
-    version: "0.1.0",
+    version: "0.1.1",
     name: `Nuvio Lusofonia — ${variant === "pt" ? "Português" : "English"}`,
     description:
       variant === "pt"

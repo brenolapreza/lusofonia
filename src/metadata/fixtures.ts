@@ -31,8 +31,9 @@ const rows = [
   ],
   ["kids", "series", "Clube das Nuvens", ["Cloud Club"], ["kids"]],
 ] as const;
-export const fixtures = rows.map(([id, type, name, aliases, categories]) =>
-  titleSchema.parse({
+export const fixtures = [
+  ...rows.map(([id, type, name, aliases, categories]) =>
+    titleSchema.parse({
     id: `nuvio:demo:${id}`,
     type,
     name,
@@ -65,5 +66,18 @@ export const fixtures = rows.map(([id, type, name, aliases, categories]) =>
               : []),
           ]
         : [],
+    }),
+  ),
+  titleSchema.parse({
+    id: "tt1254207",
+    type: "movie",
+    name: "Big Buck Bunny",
+    aliases: ["O Coelho Grandão"],
+    year: 2008,
+    country: "NL",
+    categories: ["movies", "kids"],
+    description:
+      "Curta aberto produzido pela Blender Foundation. Licença CC BY 3.0; os créditos estão incluídos no filme. Vídeo disponibilizado pelo W3C para demonstração de HTML5 video.",
+    poster: "https://media.w3.org/2010/05/bunny/poster.png",
   }),
-);
+];

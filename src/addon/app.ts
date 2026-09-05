@@ -16,6 +16,7 @@ import { LocalMetadataProvider } from "../metadata/local.js";
 import { fixtures } from "../metadata/fixtures.js";
 import { CachedSourceProvider } from "../sources/cached.js";
 import { LocalSourceProvider } from "../sources/local.js";
+import { openLicensedSources } from "../sources/open.js";
 import { TorBoxResolver } from "../torbox/resolver.js";
 import { AddonService } from "../catalog/service.js";
 import { manifest, catalogs } from "./manifest.js";
@@ -46,24 +47,23 @@ export function buildApp(
     throw new StartupError("DATABASE_URL", error);
   }
   let service: AddonService;
-  let area: "CATALOG_FILE" | "SOURCES_FILE" | "CATALOG_INIT" = "CATALOG_FILE";
+  let area: "CATALOG_FILE" | "SOURCES_FILE" | "SOURCES_JSON" | "CATALOG_INIT" = "CATALOG_FILE";
   try {
     const titles = config.CATALOG_FILE
       ? z
           .array(titleSchema)
           .parse(JSON.parse(readFileSync(config.CATALOG_FILE, "utf8")))
       : fixtures;
-    area = "SOURCES_FILE";
-    const sources = config.SOURCES_FILE
-      ? z
-          .array(candidateSchema)
-          .parse(JSON.parse(readFileSync(config.SOURCES_FILE, "utf8")))
-      : [];
+    area = config.SOURCES_JSON.trim() ? "SOURCES_JSON" : "SOURCES_FILE";
+    const sourceJson = config.SOURCES_JSON.trim() || (
+      config.SOURCES_FILE ? readFileSync(config.SOURCES_FILE, "utf8") : "[]"
+    );
+    const sources = z.array(candidateSchema).parse(JSON.parse(sourceJson));
     area = "CATALOG_INIT";
     service = new AddonService(
       deps.metadata ?? new LocalMetadataProvider(titles, repo),
       new CachedSourceProvider(
-        deps.sources ?? new LocalSourceProvider(sources),
+        deps.sources ?? new LocalSourceProvider([...openLicensedSources, ...sources]),
       ),
       deps.resolver ??
         (config.TORBOX_ENABLED
@@ -162,14 +162,9 @@ export function buildApp(
     });
     builder.defineStreamHandler(async (args: { id: string; type: string }) => {
       if (!["movie", "series"].includes(args.type)) return { streams: [] };
-      const video = await service.metadata.getVideo(args.id);
-      const title = await service.metadata.getTitle(args.id);
-      if (
-        !video ||
-        (args.type === "movie" ? !title || title.type !== "movie" : !!title)
-      )
-        return { streams: [] };
-      const streams = await service.streams(args.id, variant);
+      const video = await service.getStreamVideo(args.id, args.type);
+      if (!video) return { streams: [] };
+      const streams = await service.streamsForVideo(video, variant);
       return streams.length
         ? { streams }
         : {

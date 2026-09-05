@@ -1,6 +1,6 @@
 # Nuvio Lusofonia
 
-MVP privado de addon Stremio, com duas instalações independentes: Português e English. Implementado conforme [AGENT.md](AGENT.md). Funciona sem chaves: exibe seis títulos fictícios, criados para demonstrar filmes, séries, doramas, animes (com especial/OVA), documentários e infantil. **Não inclui vídeos nem um catálogo comercial de obras reais.**
+MVP privado de addon Stremio, com duas instalações independentes: Português e English. Implementado conforme [AGENT.md](AGENT.md). Funciona sem chaves: exibe seis títulos fictícios para demonstrar as categorias e **Big Buck Bunny**, filme aberto com duas fontes HTTPS reproduzíveis. Não inclui catálogo comercial de obras reais.
 
 ## Iniciar
 
@@ -77,6 +77,7 @@ Preparação validada localmente com build e consultas aos manifestos; a publica
 | `METADATA_API_KEY` | Reservada; nenhuma API externa de metadados implementada |
 | `CATALOG_FILE` | JSON local; vazio utiliza fixtures fictícias |
 | `SOURCES_FILE` | JSON local de fontes autorizadas; vazio não oferece reprodução |
+| `SOURCES_JSON` | Lista JSON de fontes diretamente no ambiente da hospedagem; alternativa a SOURCES_FILE. Use apenas um dos dois. Pode conter URLs privadas: não publique esse valor. |
 | `TORBOX_ENABLED` | `false` por padrão; `true` exige chave |
 | `TORBOX_API_KEY` | Chave individual, somente no ambiente do servidor |
 | `TORBOX_ONLY_CACHED` | Apenas `true` é aceito neste MVP |
@@ -139,6 +140,29 @@ A meta de catálogo cacheado abaixo de 500 ms deve ser medida também no ambient
 Protocolo consultado: [Stremio SDK](https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/protocol.md), [manifest](https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/api/responses/manifest.md), [streams](https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/api/responses/stream.md). As dependências transitivas `path-to-regexp`, `qs` e `tmp` têm overrides de correção; o servidor usa Fastify, não o router legado do SDK.
 
 ## Troubleshooting
+
+### Nuvio instala o addon, mas nenhum stream é retornado
+
+O catálogo padrão contém títulos fictícios e um filme aberto reproduzível, **Big Buck Bunny** (`tt1254207`). `SOURCES_FILE`/`SOURCES_JSON` vazios não fornecem fontes para outros títulos. Ativar TorBox não preenche essa lista: o resolver precisa de uma fonte com `videoId`, hash, `torrentId` e `fileId` do arquivo já presente na conta. A instalação do manifesto verifica o protocolo, não a disponibilidade de todos os filmes.
+
+Foi corrigido um bloqueio que exigia que o título também existisse no catálogo local. Agora uma fonte cadastrada com IMDb completo (ex.: `tt1254207`) pode ser encontrada quando o Nuvio abre o filme por outro catálogo. Episódios usam o ID exato `tt1234567:temporada:episodio`; temporada zero é aceita. IDs truncados como `tt04`, tipos incorretos e episódios diferentes não recebem um vídeo substituto.
+
+Depois de publicar a versão 0.1.1, abra **Big Buck Bunny** no catálogo de filmes do Lusofonia. Ele já fica disponível sem configuração adicional, com o filme completo e o trailer. A rota `/pt/stream/movie/tt1254207.json` deve retornar duas URLs MP4. O filme é da Blender Foundation, sob [CC BY 3.0](https://peach.blender.org/about/), e as cópias são disponibilizadas pelo [W3C para demonstração de vídeo](https://www.w3.org/2010/05/video/mediaevents.html).
+
+Os arquivos de exemplo permitem executar um catálogo dedicado ao teste:
+
+```env
+CATALOG_FILE=examples/catalog-playback-test.json
+SOURCES_FILE=examples/sources-playback-test.json
+SOURCES_JSON=
+TORBOX_ENABLED=false
+```
+
+Não há atribuição desse vídeo a outros IDs ou títulos.
+
+Para suas próprias fontes no Railway, preencha `SOURCES_JSON` com o conteúdo de um arquivo no formato dos exemplos, deixando `SOURCES_FILE` vazio. Isso dispensa enviar um arquivo privado ao contêiner. Cada fonte deve conter o `videoId` completo do filme/episódio e uma URL reproduzível ou os dados TorBox. O addon ainda não implementa busca automática em indexadores. Uma URL pública com fontes privadas/TorBox precisa de controle de acesso antes de uso com credenciais pessoais.
+
+Validação: 44 testes passaram e o build concluiu, incluindo filmes e episódios IMDb fora do catálogo local, arquivo de episódio exato, IDs inválidos, fonte ausente e resolução TorBox com API simulada (somente GET). Um cliente Stremio real detectou os dois manifestos, abriu o catálogo e recebeu as duas fontes. Ambos os MP4 públicos responderam HTTP 206 a solicitações parciais, com tipo `video/mp4` e assinatura MP4 válida. A reprodução visual no aparelho Nuvio ainda precisa ser confirmada após o deploy.
 
 ### Falha ao iniciar na hospedagem
 

@@ -24,12 +24,16 @@ const schema = z
     METADATA_API_KEY: z.string().default(""),
     CATALOG_FILE: z.string().default(""),
     SOURCES_FILE: z.string().default(""),
+    SOURCES_JSON: z.string().default(""),
     LOG_LEVEL: z
       .enum(["silent", "fatal", "error", "warn", "info", "debug", "trace"])
       .default("info"),
   })
   .refine((c) => !c.TORBOX_ENABLED || c.TORBOX_API_KEY.trim().length > 0, {
     path: ["TORBOX_API_KEY"],
+  })
+  .refine((c) => !(c.SOURCES_FILE && c.SOURCES_JSON.trim()), {
+    path: ["SOURCES_JSON"],
   });
 export type Config = z.infer<typeof schema>;
 

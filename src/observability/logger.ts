@@ -10,6 +10,7 @@ export function makeLogger(level: string, destination?: DestinationStream) {
           "authorization",
           "TORBOX_API_KEY",
           "METADATA_API_KEY",
+          "SOURCES_JSON",
           "req.headers.authorization",
           "req.url",
           "url",

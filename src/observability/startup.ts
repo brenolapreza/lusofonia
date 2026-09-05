@@ -2,6 +2,7 @@ const hints = {
   DATABASE_URL: "Não foi possível abrir o SQLite. Confira DATABASE_URL e a permissão de escrita no diretório.",
   CATALOG_FILE: "Não foi possível carregar o catálogo. Confira CATALOG_FILE: o arquivo deve existir no servidor e conter um catálogo JSON válido.",
   SOURCES_FILE: "Não foi possível carregar as fontes. Confira SOURCES_FILE: o arquivo deve existir no servidor e conter fontes JSON válidas.",
+  SOURCES_JSON: "Não foi possível carregar as fontes. SOURCES_JSON deve conter uma lista JSON de fontes com videoId e URL ou identificação TorBox válidos.",
   CATALOG_INIT: "Não foi possível preparar o catálogo. Confira IDs duplicados/ambíguos e a escrita no SQLite.",
 } as const;
 
@@ -19,6 +20,9 @@ export class ConfigurationError extends Error {
         : "",
       fields.some((field) => field.startsWith("TORBOX_"))
         ? "TORBOX_ENABLED aceita true ou false. TorBox ativo exige TORBOX_API_KEY; TORBOX_ONLY_CACHED deve ser true."
+        : "",
+      fields.includes("SOURCES_JSON")
+        ? "Use somente SOURCES_JSON ou SOURCES_FILE, não os dois ao mesmo tempo."
         : "",
     ].filter(Boolean);
     super(`Configuração inválida. Confira: ${fields.join(", ")}.${hints.length ? ` ${hints.join(" ")}` : ""}`);
