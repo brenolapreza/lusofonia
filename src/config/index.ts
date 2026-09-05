@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { httpUrl } from "../types.js";
+import { ConfigurationError } from "../observability/startup.js";
 const boolean = (fallback: string) =>
   z
     .enum(["true", "false"])
@@ -8,11 +9,12 @@ const boolean = (fallback: string) =>
 const schema = z
   .object({
     PORT: z.coerce.number().int().min(1).max(65535).default(7000),
-    HOST: z.string().default("127.0.0.1"),
+    HOST: z.string().min(1).default("127.0.0.1"),
     BASE_URL: httpUrl.default("http://localhost:7000"),
     DATABASE_URL: z
       .string()
       .startsWith("file:")
+      .min(6)
       .default("file:./data/nuvio.sqlite"),
     TORBOX_API_KEY: z.string().default(""),
     TORBOX_ENABLED: boolean("false"),
@@ -25,13 +27,13 @@ const schema = z
       .enum(["silent", "fatal", "error", "warn", "info", "debug", "trace"])
       .default("info"),
   })
-  .refine((c) => !c.TORBOX_ENABLED || c.TORBOX_API_KEY.length > 0);
+  .refine((c) => !c.TORBOX_ENABLED || c.TORBOX_API_KEY.trim().length > 0, {
+    path: ["TORBOX_API_KEY"],
+  });
 export type Config = z.infer<typeof schema>;
 export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const result = schema.safeParse(env);
   if (!result.success)
-    throw new Error(
-      "Configuração inválida. Confira .env.example; TorBox exige uma chave e ONLY_CACHED=true.",
-    );
+    throw new ConfigurationError([...new Set(result.error.issues.map((issue) => String(issue.path[0])))]);
   return result.data;
 }

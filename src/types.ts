@@ -3,10 +3,14 @@ export const httpUrl = z
   .string()
   .url()
   .refine((s) => {
-    const u = new URL(s);
-    return (
-      ["http:", "https:"].includes(u.protocol) && !u.username && !u.password
-    );
+    try {
+      const u = new URL(s);
+      return (
+        ["http:", "https:"].includes(u.protocol) && !u.username && !u.password
+      );
+    } catch {
+      return false;
+    }
   });
 export const videoSchema = z.object({
   id: z.string().min(1),

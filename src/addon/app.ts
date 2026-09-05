@@ -20,6 +20,7 @@ import { TorBoxResolver } from "../torbox/resolver.js";
 import { AddonService } from "../catalog/service.js";
 import { manifest, catalogs } from "./manifest.js";
 import { makeLogger } from "../observability/logger.js";
+import { StartupError } from "../observability/startup.js";
 const require = createRequire(import.meta.url);
 const { addonBuilder } = require("stremio-addon-sdk");
 const escape = (s: string) =>
@@ -38,19 +39,27 @@ export function buildApp(
     resolver?: CacheResolver;
   } = {},
 ) {
-  const repo = new SqliteRepository(config.DATABASE_URL.slice(5));
+  let repo: SqliteRepository;
+  try {
+    repo = new SqliteRepository(config.DATABASE_URL.slice(5));
+  } catch (error) {
+    throw new StartupError("DATABASE_URL", error);
+  }
   let service: AddonService;
+  let area: "CATALOG_FILE" | "SOURCES_FILE" | "CATALOG_INIT" = "CATALOG_FILE";
   try {
     const titles = config.CATALOG_FILE
       ? z
           .array(titleSchema)
           .parse(JSON.parse(readFileSync(config.CATALOG_FILE, "utf8")))
       : fixtures;
+    area = "SOURCES_FILE";
     const sources = config.SOURCES_FILE
       ? z
           .array(candidateSchema)
           .parse(JSON.parse(readFileSync(config.SOURCES_FILE, "utf8")))
       : [];
+    area = "CATALOG_INIT";
     service = new AddonService(
       deps.metadata ?? new LocalMetadataProvider(titles, repo),
       new CachedSourceProvider(
@@ -61,11 +70,9 @@ export function buildApp(
           ? new TorBoxResolver(config.TORBOX_API_KEY)
           : undefined),
     );
-  } catch {
+  } catch (error) {
     repo.close();
-    throw new Error(
-      "Catálogo ou fontes inválidos. Confira os arquivos locais.",
-    );
+    throw new StartupError(area, error);
   }
   const app = Fastify({
     loggerInstance: makeLogger(config.LOG_LEVEL),

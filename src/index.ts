@@ -1,16 +1,20 @@
 import { readConfig } from "./config/index.js";
 import { buildApp } from "./addon/app.js";
+import { startupFailure } from "./observability/startup.js";
+let stage: "configuração" | "aplicação" | "escuta HTTP" = "configuração";
+let app: ReturnType<typeof buildApp> | undefined;
 try {
   const config = readConfig();
-  const app = buildApp(config);
+  stage = "aplicação";
+  app = buildApp(config);
+  stage = "escuta HTTP";
   await app.listen({ port: config.PORT, host: config.HOST });
   for (const signal of ["SIGTERM", "SIGINT"])
     process.once(signal, () => {
-      void app.close();
+      void app?.close();
     });
-} catch {
-  process.stderr.write(
-    "Falha ao iniciar. Verifique a configuração, os arquivos locais e a porta.\n",
-  );
+} catch (error) {
+  process.stderr.write(startupFailure(error, stage));
+  await app?.close().catch(() => {});
   process.exitCode = 1;
 }

@@ -138,6 +138,20 @@ Protocolo consultado: [Stremio SDK](https://github.com/Stremio/stremio-addon-sdk
 
 ## Troubleshooting
 
+### Falha ao iniciar na hospedagem
+
+Os avisos `ExperimentalWarning: SQLite` e `npm warn config production` não são, por si só, a causa da falha. A inicialização agora identifica a etapa e informa nomes de variáveis ou códigos conhecidos do sistema, sem imprimir chaves, caminhos privados ou conteúdo de arquivos. Gere novamente `dist/` com `npm run build` e faça um novo deploy para receber esse diagnóstico.
+
+- **Configuração / BASE_URL:** use a URL pública completa, como `https://SEU-DOMINIO`, sem `/pt/manifest.json` e sem `:3000`. Uma variável definida como vazia não utiliza o valor padrão. A validação de URLs inválidas foi corrigida para informar o campo em vez de lançar uma exceção nativa.
+- **Configuração / TORBOX_API_KEY:** com `TORBOX_ENABLED=true`, a chave deve estar presente no ambiente da hospedagem. Para testar a demonstração, use `TORBOX_ENABLED=false` e `TORBOX_ONLY_CACHED=true`.
+- **CATALOG_FILE ou SOURCES_FILE / ENOENT:** o arquivo existe apenas no computador local. Envie-o por um mecanismo privado da hospedagem ou remova essas variáveis para testar a demonstração sem fontes.
+- **DATABASE_URL:** use um caminho SQLite como `file:./data/nuvio.sqlite`, com diretório gravável. URLs de PostgreSQL não são aceitas por este projeto. Em hospedagem com disco efêmero, o cache é recriado; persistência exige um volume.
+- **Escuta HTTP / EADDRINUSE:** há outro processo na mesma porta. Mantenha uma instância por contêiner. Para acesso externo, configure `HOST=0.0.0.0` e a porta esperada pelo proxy.
+
+Se estiver no Railway, use build `npm ci --include=dev && npm run build` e start `npm start`, com `HOST=0.0.0.0` e `PORT=3000`; direcione o domínio para a porta 3000. Defina `BASE_URL` com o endereço HTTPS real exibido no painel. `RAILWAY_PUBLIC_DOMAIN` contém somente o domínio, sem o prefixo `https://`; o comando do Render que usa `RENDER_EXTERNAL_URL` não se aplica ao Railway. Referências: [variáveis Railway](https://docs.railway.com/variables/reference) e [configuração de build e start](https://docs.railway.com/overview/advanced-concepts).
+
+Validação desta correção: 33 testes passaram, incluindo inicialização em processos separados com URL inválida, chave ausente, arquivos ausentes/inválidos, banco inacessível, porta ocupada e proteção de segredos. Build TypeScript concluído. A causa no servidor remoto depende da nova mensagem de diagnóstico ou da revisão das variáveis nessa hospedagem.
+
 - **Não conecta na TV:** use o IP do servidor e configure `HOST`/`BASE_URL`; verifique rede e exigência de HTTPS do cliente.
 - **Catálogo aparece, mas não reproduz:** os dados padrão são fictícios. Configure uma fonte autorizada e o `videoId` correto.
 - **TorBox não aparece:** confira hash/IDs da conta, cache confirmado, arquivo concluído e chave. Não são criados itens novos.
