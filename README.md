@@ -4,25 +4,27 @@ MVP privado de addon Stremio, com duas instalações independentes: Português e
 
 ## Iniciar
 
-Requer Node.js 22.13+ (Node 22 LTS usado na validação) e npm.
+Requer Node.js 22.13+ e npm. `.nvmrc` e `.node-version` fixam a versão validada 22.23.2. Node 18 não aceita `--env-file-if-exists` e não oferece o SQLite nativo usado pelo projeto.
 
 ```sh
-npm install
-npm run dev
+nvm install
+nvm use
+npm ci --include=dev
+HOST=0.0.0.0 PORT=3000 npm run dev
 ```
 
-Após instalar as dependências, `npm run dev` é o único comando necessário. `.env` é opcional e carregado automaticamente. Para configurar:
+Execute os comandos acima na pasta do projeto, usando nvm já instalado. `nvm use` precisa ser executado no terminal em que o servidor será iniciado. Após selecionar Node 22 e instalar as dependências, `npm run dev` é o único comando necessário. `.env` é opcional e carregado automaticamente; a mensagem `.env not found. Continuing without it.` é apenas informativa. Para criar uma configuração local pela primeira vez, sem sobrescrever um `.env` existente:
 
 ```sh
-cp .env.example .env
+test -e .env || cp .env.example .env
 ```
 
 Manifestos locais:
 
-- Português: http://localhost:7000/pt/manifest.json
-- English: http://localhost:7000/en/manifest.json
-- Configuração/instruções: http://localhost:7000/pt/configure
-- Saúde: http://localhost:7000/healthz
+- Português: http://localhost:3000/pt/manifest.json
+- English: http://localhost:3000/en/manifest.json
+- Configuração/instruções: http://localhost:3000/pt/configure
+- Saúde: http://localhost:3000/healthz
 
 ```sh
 npm test
@@ -42,7 +44,7 @@ Na revalidação em Docker, o addon iniciado com `HOST=0.0.0.0` respondeu HTTP 2
 
 Copie cada URL de manifesto para o campo de adicionar addon por URL do seu cliente. Instale ambas se desejar: seus IDs são distintos. A página `/configure` também oferece um link `stremio://` para o Stremio. A localização do campo no Nuvio depende da versão/plataforma; não foi testada uma interface gráfica do Nuvio neste ambiente. O [repositório oficial NuvioTV](https://github.com/NuvioMedia/NuvioTV) identifica o suporte ao ecossistema Stremio.
 
-Em uma TV ou celular, `localhost` aponta para o próprio dispositivo. Para uso na rede privada, configure `HOST=0.0.0.0` e `BASE_URL=http://IP-DO-SERVIDOR:7000`, permita acesso na rede local e use esse endereço nos manifestos. Para clientes que exigem HTTPS, utilize um reverse proxy com certificado válido e atualize `BASE_URL`. Esta versão não implementa autenticação de acesso ao addon; mantenha o serviço restrito à sua rede privada/VPN, especialmente com TorBox ativo.
+Em uma TV ou celular, `localhost` aponta para o próprio dispositivo. Para uso na rede privada, configure `HOST=0.0.0.0` e `BASE_URL=http://IP-DO-SERVIDOR:3000`, permita acesso na rede local e use esse endereço nos manifestos. Para clientes que exigem HTTPS, utilize um reverse proxy com certificado válido e atualize `BASE_URL`. Esta versão não implementa autenticação de acesso ao addon; mantenha o serviço restrito à sua rede privada/VPN, especialmente com TorBox ativo.
 
 ## Configuração
 
@@ -52,7 +54,7 @@ O arquivo [render.yaml](render.yaml) prepara um Web Service no plano **Free**, c
 
 1. Coloque o projeto em um repositório GitHub, preferencialmente privado. Inclua `render.yaml`, `package-lock.json` e `src/`. Não envie `.env`, `data/`, `node_modules/` ou `dist/`; o `.gitignore` já os exclui ao usar Git.
 2. Crie uma conta em [Render](https://dashboard.render.com/), selecione **New → Blueprint**, conecte o repositório e confira que o serviço usa o plano **Free** antes de publicar.
-3. Aguarde o deploy. O comando de início usa `RENDER_EXTERNAL_URL` para definir `BASE_URL` automaticamente com o endereço HTTPS atribuído pelo Render.
+3. Aguarde o deploy. Com `BASE_URL` ausente, a aplicação usa `RENDER_EXTERNAL_URL` automaticamente com o endereço HTTPS atribuído pelo Render. O comando de início é `npm start`.
 4. Abra `https://SEU-SERVICO.onrender.com/healthz` e confirme `{"status":"ok"}`. Abra também `/pt/manifest.json` e `/en/manifest.json` e confirme que exibem JSON.
 5. No campo de instalar addon por URL do Nuvio, cole `https://SEU-SERVICO.onrender.com/pt/manifest.json`. Para English, use `/en/manifest.json`. Substitua `SEU-SERVICO` pelo domínio real exibido no painel; esses endereços são exemplos, não uma publicação já realizada.
 
@@ -68,8 +70,8 @@ Preparação validada localmente com build e consultas aos manifestos; a publica
 
 | Variável | Comportamento |
 | --- | --- |
-| `PORT`, `HOST` | Padrão `7000`, `127.0.0.1` |
-| `BASE_URL` | URL acessível pelo cliente, sem barra final |
+| `PORT`, `HOST` | Padrão `3000`, `0.0.0.0` |
+| `BASE_URL` | URL acessível pelo cliente; barra final removida. Se ausente: domínio Railway, URL Render ou `http://localhost:PORT`, nessa ordem. Um valor explícito inválido/vazio é rejeitado. |
 | `DATABASE_URL` | Caminho SQLite com prefixo `file:` |
 | `METADATA_PROVIDER` | `local` ou vazio; outros valores são rejeitados |
 | `METADATA_API_KEY` | Reservada; nenhuma API externa de metadados implementada |
@@ -142,13 +144,13 @@ Protocolo consultado: [Stremio SDK](https://github.com/Stremio/stremio-addon-sdk
 
 Os avisos `ExperimentalWarning: SQLite` e `npm warn config production` não são, por si só, a causa da falha. A inicialização agora identifica a etapa e informa nomes de variáveis ou códigos conhecidos do sistema, sem imprimir chaves, caminhos privados ou conteúdo de arquivos. Gere novamente `dist/` com `npm run build` e faça um novo deploy para receber esse diagnóstico.
 
-- **Configuração / BASE_URL:** use a URL pública completa, como `https://SEU-DOMINIO`, sem `/pt/manifest.json` e sem `:3000`. Uma variável definida como vazia não utiliza o valor padrão. A validação de URLs inválidas foi corrigida para informar o campo em vez de lançar uma exceção nativa.
+- **Configuração / BASE_URL:** use a URL pública completa, como `https://SEU-DOMINIO`, sem `/pt/manifest.json` e sem `:3000`. Uma variável definida como vazia não utiliza o valor padrão. No Railway/Render, remova BASE_URL (em vez de deixar vazia) e publique o código atualizado para detectar o domínio da plataforma; o domínio público precisa estar criado. No Mac, use BASE_URL=http://localhost:3000. A validação de URLs inválidas foi corrigida para informar o campo em vez de lançar uma exceção nativa.
 - **Configuração / TORBOX_API_KEY:** com `TORBOX_ENABLED=true`, a chave deve estar presente no ambiente da hospedagem. Para testar a demonstração, use `TORBOX_ENABLED=false` e `TORBOX_ONLY_CACHED=true`.
 - **CATALOG_FILE ou SOURCES_FILE / ENOENT:** o arquivo existe apenas no computador local. Envie-o por um mecanismo privado da hospedagem ou remova essas variáveis para testar a demonstração sem fontes.
 - **DATABASE_URL:** use um caminho SQLite como `file:./data/nuvio.sqlite`, com diretório gravável. URLs de PostgreSQL não são aceitas por este projeto. Em hospedagem com disco efêmero, o cache é recriado; persistência exige um volume.
 - **Escuta HTTP / EADDRINUSE:** há outro processo na mesma porta. Mantenha uma instância por contêiner. Para acesso externo, configure `HOST=0.0.0.0` e a porta esperada pelo proxy.
 
-Se estiver no Railway, use build `npm ci --include=dev && npm run build` e start `npm start`, com `HOST=0.0.0.0` e `PORT=3000`; direcione o domínio para a porta 3000. Defina `BASE_URL` com o endereço HTTPS real exibido no painel. `RAILWAY_PUBLIC_DOMAIN` contém somente o domínio, sem o prefixo `https://`; o comando do Render que usa `RENDER_EXTERNAL_URL` não se aplica ao Railway. Referências: [variáveis Railway](https://docs.railway.com/variables/reference) e [configuração de build e start](https://docs.railway.com/overview/advanced-concepts).
+Se estiver no Railway, use build `npm ci --include=dev && npm run build` e start `npm start`, com `HOST=0.0.0.0` e `PORT=3000`; direcione o domínio para a porta 3000. Defina `BASE_URL` com o endereço HTTPS real exibido no painel, ou remova essa variável para usar a detecção automática após gerar o domínio. `RAILWAY_PUBLIC_DOMAIN` contém somente o domínio, sem o prefixo `https://`; a aplicação agora acrescenta `https://` automaticamente quando usa esse domínio. Remova comandos personalizados antigos que forçam BASE_URL e use apenas `npm start`. Referências: [variáveis Railway](https://docs.railway.com/variables/reference) e [configuração de build e start](https://docs.railway.com/overview/advanced-concepts).
 
 Validação desta correção: 33 testes passaram, incluindo inicialização em processos separados com URL inválida, chave ausente, arquivos ausentes/inválidos, banco inacessível, porta ocupada e proteção de segredos. Build TypeScript concluído. A causa no servidor remoto depende da nova mensagem de diagnóstico ou da revisão das variáveis nessa hospedagem.
 
@@ -158,3 +160,7 @@ Validação desta correção: 33 testes passaram, incluindo inicialização em p
 - **Falha na inicialização:** revise os JSON, variáveis, permissão no diretório do banco e porta. `TORBOX_ONLY_CACHED=false` é rejeitado.
 - **Idioma incorreto ou desconhecido:** preencha tags padronizadas e `verified` após conferir trilhas; nenhum nome de arquivo é interpretado.
 - **Conflito de ID cruzado após trocar de catálogo:** revise os mapeamentos; para reiniciar o índice local de demonstração, pare o servidor e remova o banco em `data/` (isso elimina apenas cache e aliases locais).
+
+Correção de ambiente local/nuvem: `.nvmrc` e `.node-version` adicionados para Node 22.23.2; padrão local alterado para `0.0.0.0:3000`; domínio público detectado por variáveis oficiais Railway/Render quando BASE_URL está ausente; mensagens de erro de URL separadas das orientações TorBox. Valores explícitos inválidos continuam sendo rejeitados.
+
+Validação: 37 testes passaram e o build TypeScript concluiu. O build gerado respondeu ao healthcheck, aos dois manifestos e às páginas de configuração com as URLs corretas em simulações local, Railway e Render. A seleção do Node no Mac e a atualização do deploy precisam ocorrer nesses ambientes.

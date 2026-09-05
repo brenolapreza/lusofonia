@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     buildCommand: npm ci --include=dev && npm run build
-    startCommand: BASE_URL="$RENDER_EXTERNAL_URL" npm start
+    startCommand: npm start
     healthCheckPath: /healthz
     envVars:
       - key: NODE_VERSION

@@ -6,11 +6,12 @@ const boolean = (fallback: string) =>
     .enum(["true", "false"])
     .default(fallback as "true" | "false")
     .transform((v) => v === "true");
+const portSchema = z.coerce.number().int().min(1).max(65535).default(3000);
 const schema = z
   .object({
-    PORT: z.coerce.number().int().min(1).max(65535).default(7000),
-    HOST: z.string().min(1).default("127.0.0.1"),
-    BASE_URL: httpUrl.default("http://localhost:7000"),
+    PORT: portSchema,
+    HOST: z.string().min(1).default("0.0.0.0"),
+    BASE_URL: httpUrl.transform((url) => url.replace(/\/+$/, "")),
     DATABASE_URL: z
       .string()
       .startsWith("file:")
@@ -32,7 +33,12 @@ const schema = z
   });
 export type Config = z.infer<typeof schema>;
 export function readConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const result = schema.safeParse(env);
+  const port = portSchema.safeParse(env.PORT);
+  const baseUrl = env.BASE_URL ?? (
+    env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` :
+    env.RENDER_EXTERNAL_URL || `http://localhost:${port.success ? port.data : 3000}`
+  );
+  const result = schema.safeParse({ ...env, BASE_URL: baseUrl });
   if (!result.success)
     throw new ConfigurationError([...new Set(result.error.issues.map((issue) => String(issue.path[0])))]);
   return result.data;

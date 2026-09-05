@@ -35,6 +35,35 @@ async function failedStart(env: NodeJS.ProcessEnv) {
 }
 
 describe("diagnóstico de inicialização", () => {
+  it("inicia localmente na porta 3000 sem .env e acompanha PORT personalizado", () => {
+    expect(readConfig({})).toMatchObject({ PORT: 3000, HOST: "0.0.0.0", BASE_URL: "http://localhost:3000" });
+    expect(readConfig({ PORT: "8080" }).BASE_URL).toBe("http://localhost:8080");
+  });
+
+  it("usa os domínios do Railway e Render quando BASE_URL está ausente", () => {
+    expect(readConfig({ RAILWAY_PUBLIC_DOMAIN: "addon.up.railway.app" }).BASE_URL)
+      .toBe("https://addon.up.railway.app");
+    expect(readConfig({ RENDER_EXTERNAL_URL: "https://addon.onrender.com/" }).BASE_URL)
+      .toBe("https://addon.onrender.com");
+  });
+
+  it("preserva URL explícita e rejeita configuração inválida mesmo na nuvem", () => {
+    const cloud = { RAILWAY_PUBLIC_DOMAIN: "addon.up.railway.app" };
+    expect(readConfig({ ...cloud, BASE_URL: "https://custom.example.org/" }).BASE_URL)
+      .toBe("https://custom.example.org");
+    expect(() => readConfig({ ...cloud, BASE_URL: "" })).toThrow(/BASE_URL/);
+    expect(() => readConfig({ ...cloud, BASE_URL: secret })).toThrow(/BASE_URL/);
+  });
+
+  it("erro de URL não sugere que TorBox está ativo", () => {
+    try { readConfig({ BASE_URL: secret }); } catch (error) {
+      const output = startupFailure(error, "configuração");
+      expect(output).toContain("https://");
+      expect(output).not.toContain("TorBox");
+      expect(output).not.toContain(secret);
+    }
+  });
+
   it.each(["", "addon.up.railway.app", "${{RAILWAY_PUBLIC_DOMAIN}}"])(
     "rejeita URL inválida %j sem lançar erro nativo de URL", (value) => {
       expect(httpUrl.safeParse(value).success).toBe(false);

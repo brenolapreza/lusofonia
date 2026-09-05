@@ -13,7 +13,15 @@ export class StartupError extends Error {
 
 export class ConfigurationError extends Error {
   constructor(readonly fields: string[]) {
-    super(`Configuração inválida. Confira: ${fields.join(", ")}. TorBox ativo exige TORBOX_API_KEY e TORBOX_ONLY_CACHED=true.`);
+    const hints = [
+      fields.includes("BASE_URL")
+        ? "BASE_URL deve ser uma URL completa com http:// ou https://. Não deixe vazia. No Railway/Render, remova a variável para usar o domínio automático."
+        : "",
+      fields.some((field) => field.startsWith("TORBOX_"))
+        ? "TORBOX_ENABLED aceita true ou false. TorBox ativo exige TORBOX_API_KEY; TORBOX_ONLY_CACHED deve ser true."
+        : "",
+    ].filter(Boolean);
+    super(`Configuração inválida. Confira: ${fields.join(", ")}.${hints.length ? ` ${hints.join(" ")}` : ""}`);
   }
 }
 
