@@ -71,7 +71,7 @@ Preparação validada localmente com build e consultas aos manifestos; a publica
 | Variável | Comportamento |
 | --- | --- |
 | `PORT`, `HOST` | Padrão `3000`, `0.0.0.0` |
-| `BASE_URL` | URL acessível pelo cliente; barra final removida. Se ausente: domínio Railway, URL Render ou `http://localhost:PORT`, nessa ordem. Um valor explícito inválido/vazio é rejeitado. |
+| `BASE_URL` | URL acessível pelo cliente; barra final removida. Se ausente ou vazia: domínio Railway, URL Render ou `http://localhost:PORT`, nessa ordem. Um valor não vazio inválido é rejeitado. |
 | `DATABASE_URL` | Caminho SQLite com prefixo `file:` |
 | `METADATA_PROVIDER` | `local` ou vazio; outros valores são rejeitados |
 | `METADATA_API_KEY` | Reservada; nenhuma API externa de metadados implementada |
@@ -144,7 +144,7 @@ Protocolo consultado: [Stremio SDK](https://github.com/Stremio/stremio-addon-sdk
 
 Os avisos `ExperimentalWarning: SQLite` e `npm warn config production` não são, por si só, a causa da falha. A inicialização agora identifica a etapa e informa nomes de variáveis ou códigos conhecidos do sistema, sem imprimir chaves, caminhos privados ou conteúdo de arquivos. Gere novamente `dist/` com `npm run build` e faça um novo deploy para receber esse diagnóstico.
 
-- **Configuração / BASE_URL:** use a URL pública completa, como `https://SEU-DOMINIO`, sem `/pt/manifest.json` e sem `:3000`. Uma variável definida como vazia não utiliza o valor padrão. No Railway/Render, remova BASE_URL (em vez de deixar vazia) e publique o código atualizado para detectar o domínio da plataforma; o domínio público precisa estar criado. No Mac, use BASE_URL=http://localhost:3000. A validação de URLs inválidas foi corrigida para informar o campo em vez de lançar uma exceção nativa.
+- **Configuração / BASE_URL:** use a URL pública completa, como `https://SEU-DOMINIO`, sem `/pt/manifest.json` e sem `:3000`. Campos vazios agora utilizam os padrões. No Railway/Render, remova ou esvazie BASE_URL e publique o código atualizado para detectar o domínio da plataforma; o domínio público precisa estar criado. No Mac, use BASE_URL=http://localhost:3000. A validação de URLs inválidas foi corrigida para informar o campo em vez de lançar uma exceção nativa.
 - **Configuração / TORBOX_API_KEY:** com `TORBOX_ENABLED=true`, a chave deve estar presente no ambiente da hospedagem. Para testar a demonstração, use `TORBOX_ENABLED=false` e `TORBOX_ONLY_CACHED=true`.
 - **CATALOG_FILE ou SOURCES_FILE / ENOENT:** o arquivo existe apenas no computador local. Envie-o por um mecanismo privado da hospedagem ou remova essas variáveis para testar a demonstração sem fontes.
 - **DATABASE_URL:** use um caminho SQLite como `file:./data/nuvio.sqlite`, com diretório gravável. URLs de PostgreSQL não são aceitas por este projeto. Em hospedagem com disco efêmero, o cache é recriado; persistência exige um volume.
@@ -161,6 +161,10 @@ Validação desta correção: 33 testes passaram, incluindo inicialização em p
 - **Idioma incorreto ou desconhecido:** preencha tags padronizadas e `verified` após conferir trilhas; nenhum nome de arquivo é interpretado.
 - **Conflito de ID cruzado após trocar de catálogo:** revise os mapeamentos; para reiniciar o índice local de demonstração, pare o servidor e remova o banco em `data/` (isso elimina apenas cache e aliases locais).
 
-Correção de ambiente local/nuvem: `.nvmrc` e `.node-version` adicionados para Node 22.23.2; padrão local alterado para `0.0.0.0:3000`; domínio público detectado por variáveis oficiais Railway/Render quando BASE_URL está ausente; mensagens de erro de URL separadas das orientações TorBox. Valores explícitos inválidos continuam sendo rejeitados.
+Correção de ambiente local/nuvem: `.nvmrc` e `.node-version` adicionados para Node 22.23.2; padrão local alterado para `0.0.0.0:3000`; domínio público detectado por variáveis oficiais Railway/Render quando BASE_URL está ausente; mensagens de erro de URL separadas das orientações TorBox. Valores não vazios inválidos continuam sendo rejeitados.
 
 Validação: 37 testes passaram e o build TypeScript concluiu. O build gerado respondeu ao healthcheck, aos dois manifestos e às páginas de configuração com as URLs corretas em simulações local, Railway e Render. A seleção do Node no Mac e a atualização do deploy precisam ocorrer nesses ambientes.
+
+Correção de campos vazios no painel: foi reproduzida a mensagem com HOST, BASE_URL, DATABASE_URL, TORBOX_ENABLED e TORBOX_ONLY_CACHED definidos como strings vazias. A configuração agora remove espaços externos e um par de aspas externas dos campos de configuração; valores vazios usam os padrões. Isso inclui strings como `""` e `''`. Credenciais TORBOX_API_KEY e METADATA_API_KEY não são alteradas. TORBOX_ENABLED vazio significa false; TORBOX_ONLY_CACHED vazio significa true. Valores não vazios inválidos continuam falhando, inclusive TORBOX_ONLY_CACHED=false e TorBox ativo sem chave.
+
+Validação atual: 40 testes passaram e o build concluiu. Um processo do build foi iniciado em diretório temporário sem .env, com os cinco campos vazios e domínio Railway simulado: healthcheck e manifestos responderam HTTP 200, e os links de configuração usaram HTTPS. Essa correção precisa ser enviada ao repositório conectado e compilada no novo deploy; reiniciar uma versão antiga não aplica a mudança. Build: `npm ci --include=dev && npm run build`; start: `npm start`.

@@ -51,7 +51,7 @@ describe("diagnóstico de inicialização", () => {
     const cloud = { RAILWAY_PUBLIC_DOMAIN: "addon.up.railway.app" };
     expect(readConfig({ ...cloud, BASE_URL: "https://custom.example.org/" }).BASE_URL)
       .toBe("https://custom.example.org");
-    expect(() => readConfig({ ...cloud, BASE_URL: "" })).toThrow(/BASE_URL/);
+    expect(readConfig({ ...cloud, BASE_URL: "" }).BASE_URL).toBe("https://addon.up.railway.app");
     expect(() => readConfig({ ...cloud, BASE_URL: secret })).toThrow(/BASE_URL/);
   });
 
@@ -64,12 +64,57 @@ describe("diagnóstico de inicialização", () => {
     }
   });
 
-  it.each(["", "addon.up.railway.app", "${{RAILWAY_PUBLIC_DOMAIN}}"])(
+  it.each(["addon.up.railway.app", "${{RAILWAY_PUBLIC_DOMAIN}}"])(
     "rejeita URL inválida %j sem lançar erro nativo de URL", (value) => {
       expect(httpUrl.safeParse(value).success).toBe(false);
       expect(() => readConfig({ BASE_URL: value })).toThrow(/BASE_URL/);
     },
   );
+
+  it("recupera a configuração com os cinco campos vazios do incidente", () => {
+    expect(readConfig({
+      PORT: "3000", HOST: "", BASE_URL: "", DATABASE_URL: "",
+      TORBOX_ENABLED: "", TORBOX_ONLY_CACHED: "",
+      RAILWAY_PUBLIC_DOMAIN: "addon.up.railway.app",
+    })).toMatchObject({
+      PORT: 3000, HOST: "0.0.0.0", BASE_URL: "https://addon.up.railway.app",
+      DATABASE_URL: "file:./data/nuvio.sqlite", TORBOX_ENABLED: false,
+      TORBOX_ONLY_CACHED: "true",
+    });
+  });
+
+  it("aceita espaços e aspas de campos do painel sem alterar credenciais ou ambiente", () => {
+    const env = {
+      PORT: ' "3000" ', HOST: " '0.0.0.0' ", BASE_URL: ' "https://addon.example.org/" ',
+      DATABASE_URL: '"file::memory:"', TORBOX_ENABLED: ' "true" ',
+      TORBOX_ONLY_CACHED: " 'true' ", CATALOG_FILE: '""', SOURCES_FILE: " '' ",
+      TORBOX_API_KEY: ' "private credential" ', METADATA_API_KEY: " other credential ",
+    };
+    expect(readConfig(env)).toMatchObject({
+      PORT: 3000, HOST: "0.0.0.0", BASE_URL: "https://addon.example.org",
+      DATABASE_URL: "file::memory:", TORBOX_ENABLED: true, TORBOX_ONLY_CACHED: "true",
+      CATALOG_FILE: "", SOURCES_FILE: "", TORBOX_API_KEY: env.TORBOX_API_KEY,
+      METADATA_API_KEY: env.METADATA_API_KEY,
+    });
+    expect(env.PORT).toBe(' "3000" ');
+  });
+
+  it("usa padrões para espaços/aspas vazias e preserva a detecção do domínio", () => {
+    expect(readConfig({ PORT: " ", HOST: '""', BASE_URL: " '' ",
+      DATABASE_URL: "\n", TORBOX_ENABLED: '""', TORBOX_ONLY_CACHED: '""',
+      RAILWAY_PUBLIC_DOMAIN: ' "addon.up.railway.app" ', LOG_LEVEL: " "
+    })).toMatchObject({ PORT: 3000, HOST: "0.0.0.0", BASE_URL: "https://addon.up.railway.app",
+      TORBOX_ENABLED: false, TORBOX_ONLY_CACHED: "true", LOG_LEVEL: "info" });
+  });
+
+  it("continua rejeitando valores inválidos não vazios e TorBox sem chave", () => {
+    for (const env of [
+      { PORT: '"abc"' }, { BASE_URL: '"sem-protocolo"' },
+      { DATABASE_URL: '"postgres://example.org/db"' },
+      { TORBOX_ENABLED: '"yes"' }, { TORBOX_ONLY_CACHED: '"false"' },
+      { TORBOX_ENABLED: '"true"', TORBOX_API_KEY: "" },
+    ]) expect(() => readConfig(env)).toThrow();
+  });
 
   it("informa nomes das variáveis inválidas sem imprimir valores", async () => {
     const output = await failedStart({ BASE_URL: secret, PORT: secret });
